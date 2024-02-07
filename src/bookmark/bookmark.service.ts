@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { PrismaService } from '../../src/prisma/prisma.service';
 import { CreateBookmarkDto, UpdateBookmarkDto } from './dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class BookmarkService {
