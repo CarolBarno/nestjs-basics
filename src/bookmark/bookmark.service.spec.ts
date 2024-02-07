@@ -1,87 +1,158 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { BookmarkController } from "./bookmark.controller";
-import { BookmarkService } from "./bookmark.service";
-import { PrismaService } from "../../src/prisma/prisma.service";
-import { bookmarkDto, createBookmarkDto, updatebookmarkDto } from "../../test/utils/test-objects";
+import { Test, TestingModule } from '@nestjs/testing';
+import { BookmarkService } from './bookmark.service';
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  bookmarkDto,
+  createBookmarkDto,
+  updatebookmarkDto,
+} from '../../test/utils/test-objects';
+import { ForbiddenException } from '@nestjs/common';
 
+describe('BookmarkService', () => {
+  let bookmarkService: BookmarkService;
+  let prismaService: PrismaService;
 
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        BookmarkService,
+        {
+          provide: PrismaService,
+          useValue: {
+            bookmark: {
+              findMany: jest.fn(),
+              findFirst: jest.fn(),
+              create: jest.fn(),
+              update: jest.fn(),
+              findUnique: jest.fn(),
+              delete: jest.fn(),
+            },
+          },
+        },
+      ],
+    }).compile();
 
-describe('Bookmark Service', () => {
-    let bookmarkController: BookmarkController;
-    let bookmarkServiceMock: Partial<BookmarkService>;
+    bookmarkService = module.get<BookmarkService>(BookmarkService);
+    prismaService = module.get<PrismaService>(PrismaService);
+  });
 
-    beforeEach(async () => {
-        bookmarkServiceMock = {
-            getBookmarks: jest.fn(),
-            getBookmarkById: jest.fn(),
-            createBookmark: jest.fn(),
-            editBookmarkById: jest.fn(),
-            deleteBookmarkById: jest.fn()
-        };
+  it('should be defined', () => {
+    expect(prismaService).toBeDefined();
+    expect(bookmarkService).toBeDefined();
+  });
 
-        const module: TestingModule = await Test.createTestingModule({
-            controllers: [BookmarkController],
-            providers: [
-                { provide: BookmarkService, useValue: bookmarkServiceMock },
-                { provide: PrismaService, useValue: {} }
-            ]
-        }).compile();
+  describe('getBookmarks', () => {
+    it('should return bookmarks for a user', async () => {
+      const userId = 1;
 
-        bookmarkController = module.get<BookmarkController>(BookmarkController);
+      jest
+        .spyOn(prismaService.bookmark, 'findMany')
+        .mockResolvedValue([bookmarkDto]);
+
+      const result = await bookmarkService.getBookmarks(userId);
+
+      expect(result).toEqual([bookmarkDto]);
+    });
+  });
+
+  describe('getBookmarkById', () => {
+    it('should return a bookmark by ID for a user', async () => {
+      const userId = 1;
+      const bookmarkId = 1;
+
+      jest
+        .spyOn(prismaService.bookmark, 'findFirst')
+        .mockResolvedValue(bookmarkDto);
+
+      const result = await bookmarkService.getBookmarkById(userId, bookmarkId);
+
+      expect(result).toEqual(bookmarkDto);
+    });
+  });
+
+  describe('createBookmark', () => {
+    it('should create a bookmark for a user', async () => {
+      const userId = 1;
+
+      jest
+        .spyOn(prismaService.bookmark, 'create')
+        .mockResolvedValue(bookmarkDto);
+
+      const result = await bookmarkService.createBookmark(
+        userId,
+        createBookmarkDto,
+      );
+
+      expect(result).toEqual(bookmarkDto);
+    });
+  });
+
+  describe('editBookmarkById', () => {
+    it('should edit a bookmark by ID for a user', async () => {
+      const userId = 1;
+      const bookmarkId = 1;
+
+      jest
+        .spyOn(prismaService.bookmark, 'findUnique')
+        .mockResolvedValue(bookmarkDto);
+      jest
+        .spyOn(prismaService.bookmark, 'update')
+        .mockResolvedValue(bookmarkDto);
+
+      const result = await bookmarkService.editBookmarkById(
+        userId,
+        bookmarkId,
+        updatebookmarkDto,
+      );
+
+      expect(result).toEqual(bookmarkDto);
     });
 
-    describe('getBookmarks', () => {
-        it('should return an array of bookmarks', async () => {
-            const userId = 1;
-            jest.spyOn(bookmarkServiceMock, 'getBookmarks').mockResolvedValue([bookmarkDto]);
-            const result = await bookmarkController.getBookmarks(userId);
+    it('should throw ForbiddenException when trying to edit a bookmark with wrong user', async () => {
+      const userId = 2;
+      const bookmarkId = 1;
 
-            expect(bookmarkServiceMock.getBookmarks).toHaveBeenCalledWith(userId);
-            expect(result).toEqual([bookmarkDto]);
-        });
+      jest
+        .spyOn(prismaService.bookmark, 'findUnique')
+        .mockResolvedValue(bookmarkDto);
+
+      await expect(
+        bookmarkService.editBookmarkById(userId, bookmarkId, updatebookmarkDto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('deleteBookmarkById', () => {
+    it('should delete a bookmark by ID for a user', async () => {
+      const userId = 1;
+      const bookmarkId = 1;
+
+      jest
+        .spyOn(prismaService.bookmark, 'findUnique')
+        .mockResolvedValue(bookmarkDto);
+      jest
+        .spyOn(prismaService.bookmark, 'delete')
+        .mockResolvedValue(bookmarkDto);
+
+      const result = await bookmarkService.deleteBookmarkById(
+        userId,
+        bookmarkId,
+      );
+
+      expect(result).toBeUndefined();
     });
 
-    describe('getBookmarkById', () => {
-        it('should get bookmark by id', async () => {
-            const bookmarkId = 1, userId = 1;
-            jest.spyOn(bookmarkServiceMock, 'getBookmarkById').mockResolvedValue(bookmarkDto);
-            const result = await bookmarkController.getBookmarkById(userId, bookmarkId);
+    it('should throw ForbiddenException when trying to delete a bookmark with wrong user', async () => {
+      const userId = 2;
+      const bookmarkId = 1;
 
-            expect(bookmarkServiceMock.getBookmarkById).toHaveBeenCalledWith(userId, bookmarkId);
-            expect(result).toEqual(bookmarkDto);
-        });
+      jest
+        .spyOn(prismaService.bookmark, 'findUnique')
+        .mockResolvedValue(bookmarkDto);
+
+      await expect(
+        bookmarkService.deleteBookmarkById(userId, bookmarkId),
+      ).rejects.toThrow(ForbiddenException);
     });
-
-    describe('createBookmark', () => {
-        it('should create bookmark', async () => {
-            const userId = 1;
-            jest.spyOn(bookmarkServiceMock, 'createBookmark').mockResolvedValue(bookmarkDto);
-            const result = await bookmarkController.createBookmark(userId, createBookmarkDto);
-
-            expect(bookmarkServiceMock.createBookmark).toHaveBeenCalledWith(userId, createBookmarkDto);
-            expect(result).toEqual(bookmarkDto);
-        });
-    });
-
-    describe('editBookmarkById', () => {
-        it('should edit a bookmark', async () => {
-            const userId = 1, bookmarkId = 1;
-            jest.spyOn(bookmarkServiceMock, 'editBookmarkById').mockResolvedValue(bookmarkDto);
-            const result = await bookmarkController.editBookmarkById(userId, bookmarkId, updatebookmarkDto);
-
-            expect(bookmarkServiceMock.editBookmarkById).toHaveBeenCalledWith(userId, bookmarkId, updatebookmarkDto);
-            expect(result).toEqual(bookmarkDto);
-        });
-    });
-
-    describe('deleteBookmarkById', () => {
-        it('should delete a bookmar by id', async () => {
-            const userId = 1, bookmarkId = 1;
-            jest.spyOn(bookmarkServiceMock, 'deleteBookmarkById').mockResolvedValue();
-            const result = await bookmarkController.deleteBookmarkById(userId, bookmarkId);
-
-            expect(bookmarkServiceMock.deleteBookmarkById).toHaveBeenCalledWith(userId, bookmarkId);
-            expect(result).toEqual(undefined);
-        });
-    });
+  });
 });
