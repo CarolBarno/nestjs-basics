@@ -1,63 +1,132 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { authDto } from '../../test/utils/test-objects';
+import { ForbiddenException } from '@nestjs/common';
+import * as argon from 'argon2';
+import { authDto, authResponse, user } from '../../test/utils/test-objects';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
-describe('AuthController', () => {
-    let authController: AuthController;
-    let authServiceMock: Partial<AuthService>;
+describe('AuthService', () => {
+  let authService: AuthService;
+  let prismaService: PrismaService;
+  let jwtService: JwtService;
+  let configService: ConfigService;
 
-    beforeEach(async () => {
-        authServiceMock = {
-            signup: jest.fn(),
-            signin: jest.fn()
-        };
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [AuthService, PrismaService, JwtService, ConfigService],
+    }).compile();
 
-        const module: TestingModule = await Test.createTestingModule({
-            controllers: [AuthController],
-            providers: [
-                { provide: AuthService, useValue: authServiceMock },
-                { provide: PrismaService, useValue: {} },
-                { provide: JwtService, useValue: {} },
-                { provide: ConfigService, useValue: {} },
-            ],
-        }).compile();
+    authService = module.get<AuthService>(AuthService);
+    prismaService = module.get<PrismaService>(PrismaService);
+    jwtService = module.get<JwtService>(JwtService);
+    configService = module.get<ConfigService>(ConfigService);
+  });
 
-        authController = module.get<AuthController>(AuthController);
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(authService).toBeDefined();
+    expect(prismaService).toBeDefined();
+    expect(jwtService).toBeDefined();
+    expect(configService).toBeDefined();
+  });
+
+  describe('signup', () => {
+    it('should create a new user and return a token', async () => {
+      const hashSpy = jest
+        .spyOn(argon, 'hash')
+        .mockResolvedValue('hashed_password');
+      jest.spyOn(prismaService.user, 'create').mockResolvedValue(user);
+      jest
+        .spyOn(jwtService, 'signAsync')
+        .mockResolvedValue(authResponse.access_token);
+
+      const result = await authService.signup(authDto);
+
+      expect(hashSpy).toHaveBeenCalledWith(authDto.password);
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: { email: authDto.email, hash: 'hashed_password' },
+      });
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { sub: user.id, email: user.email },
+        { expiresIn: '15m', secret: 'super-secret' },
+      );
+      expect(result).toEqual(authResponse);
+
+      hashSpy.mockRestore();
     });
 
-    describe('signup', () => {
-        it('should signup', async () => {
+    it('should throw ForbiddenException when PrismaClientKnownRequestError with code P2002 occurs', async () => {
+      const prismaError = new PrismaClientKnownRequestError('message', {
+        code: 'P2002',
+        clientVersion: '1.0',
+        meta: {},
+        batchRequestIdx: 0,
+      });
 
-            jest.spyOn(authServiceMock, 'signup').mockResolvedValue({
-                access_token: 'mockAccessToken',
-            });
+      jest.spyOn(argon, 'hash').mockResolvedValue('hashed_password');
+      jest.spyOn(prismaService.user, 'create').mockRejectedValue(prismaError);
 
-            const result = await authController.signup(authDto);
-
-            expect(authServiceMock.signup).toHaveBeenCalledWith(authDto);
-            expect(result).toEqual({
-                access_token: 'mockAccessToken',
-            });
-        });
+      await expect(authService.signup(authDto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
-    describe('signin', () => {
-        it('should signin', async () => {
+    it('should throw error when unexpected error occurs during user creation', async () => {
+      const unexpectedError = new Error('Unexpected error');
 
-            jest.spyOn(authServiceMock, 'signin').mockResolvedValue({
-                access_token: 'mockAccessToken',
-            });
+      jest.spyOn(argon, 'hash').mockResolvedValue('hashed_password');
+      jest
+        .spyOn(prismaService.user, 'create')
+        .mockRejectedValue(unexpectedError);
 
-            const result = await authController.signin(authDto);
-
-            expect(authServiceMock.signin).toHaveBeenCalledWith(authDto);
-            expect(result).toEqual({
-                access_token: 'mockAccessToken',
-            });
-        });
+      await expect(authService.signup(authDto)).rejects.toThrow(
+        unexpectedError,
+      );
     });
+  });
+
+  describe('signin', () => {
+    it('should sign in user and return a token', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(user);
+      jest.spyOn(argon, 'verify').mockResolvedValue(true);
+      jest
+        .spyOn(jwtService, 'signAsync')
+        .mockResolvedValue(authResponse.access_token);
+
+      const result = await authService.signin(authDto);
+
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { email: authDto.email },
+      });
+      expect(argon.verify).toHaveBeenCalledWith(user.hash, authDto.password);
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        { sub: user.id, email: user.email },
+        { expiresIn: '15m', secret: 'super-secret' },
+      );
+      expect(result).toEqual(authResponse);
+    });
+
+    it('should throw ForbiddenException when credentials are incorrect', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null);
+
+      await expect(authService.signin(authDto)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw ForbiddenException when password does not match', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(user);
+      jest.spyOn(argon, 'verify').mockResolvedValue(false);
+
+      await expect(authService.signin(authDto)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
 });
