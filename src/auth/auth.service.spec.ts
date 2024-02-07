@@ -24,7 +24,12 @@ describe('AuthService', () => {
             signAsync: jest.fn(),
           },
         },
-        ConfigService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn().mockReturnValue('super-secret'),
+          },
+        },
         {
           provide: PrismaService,
           useValue: {
