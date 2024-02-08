@@ -23,16 +23,17 @@ export const bookmarkDto = {
 
 export const createBookmarkDto: CreateBookmarkDto = {
   title: 'Test',
-  link: 'https://googl.com/',
+  link: 'https://google.com/',
 };
 
 export const updatebookmarkDto: UpdateBookmarkDto = {
   description: 'Testing',
+  title: 'Test 1'
 };
 
 export const editUserDto: EditUserDto = {
-  lastName: 'Doe',
   firstName: 'Jane',
+  email: 'johndoe@gmail.com'
 };
 
 export const user = {
