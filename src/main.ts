@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from './configs/swagger.config';
 import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
 
 const configService = new ConfigService();
 const port =
@@ -17,6 +18,13 @@ async function bootstrap() {
     }),
   );
   app.setGlobalPrefix('api');
+  app.use(helmet());
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,PUT,POST',
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
   const document = await swaggerConfig(app, port);
   SwaggerModule.setup('swagger-ui', app, document);
   console.log(`Swagger UI is running on: http://localhost:${port}/swagger-ui`);
