@@ -44,3 +44,10 @@ export const user = {
   firstName: 'Jane',
   lastName: 'Doe',
 };
+
+export const healthResponse = {
+  status: 'ok',
+  info: {},
+  error: {},
+  details: {},
+};
