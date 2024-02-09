@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +13,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
-    private readonly eventEmitter: TypedEventEmitter,
+    private readonly emailService: EmailService,
   ) {}
   async signup(dto: AuthDto) {
     const hash = await argon.hash(dto.password);
@@ -26,12 +26,12 @@ export class AuthService {
         },
       });
 
-      this.eventEmitter.emit('user.welcome', {
+      this.emailService.welcomeEmail({
         name: 'Testing',
         email: dto.email,
       });
 
-      this.eventEmitter.emit('user.verify-email', {
+      this.emailService.verifyEmail({
         name: ' Test',
         email: dto.email,
         otp: '1234',

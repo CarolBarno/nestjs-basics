@@ -6,9 +6,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { HealthModule } from './health/health.module';
 import { TerminusModule } from '@nestjs/terminus';
-import { EmailModule } from './email/email.module';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { TypedEventEmitterModule } from './event-emitter/event-emitter.module';
 
 @Module({
   imports: [
@@ -21,9 +18,6 @@ import { TypedEventEmitterModule } from './event-emitter/event-emitter.module';
     PrismaModule,
     TerminusModule,
     HealthModule,
-    EmailModule,
-    EventEmitterModule.forRoot(),
-    TypedEventEmitterModule,
   ],
 })
 export class AppModule {}

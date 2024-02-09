@@ -33,5 +33,6 @@ import { ConfigService } from '@nestjs/config';
     }),
   ],
   providers: [EmailService],
+  exports: [EmailService],
 })
 export class EmailModule {}
