@@ -5,19 +5,29 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ForbiddenException } from '@nestjs/common';
 import * as argon from 'argon2';
-import { authDto, authResponse, user } from '../../test/utils/test-objects';
+import {
+  authDto,
+  authResponse,
+  mailerMock,
+  user,
+} from '../../test/utils/test-objects';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { EmailService } from '../email/email.service';
+import { MailerService } from '@nestjs-modules/mailer';
 
 describe('AuthService', () => {
   let authService: AuthService;
   let prismaService: PrismaService;
   let jwtService: JwtService;
   let configService: ConfigService;
+  let mailerServiceMock: MailerService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        EmailService,
+        { provide: MailerService, useValue: mailerMock },
         {
           provide: JwtService,
           useValue: {
@@ -46,6 +56,7 @@ describe('AuthService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
     jwtService = module.get<JwtService>(JwtService);
     configService = module.get<ConfigService>(ConfigService);
+    mailerServiceMock = module.get<MailerService>(MailerService);
   });
 
   afterEach(() => {

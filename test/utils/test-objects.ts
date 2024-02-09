@@ -28,12 +28,12 @@ export const createBookmarkDto: CreateBookmarkDto = {
 
 export const updatebookmarkDto: UpdateBookmarkDto = {
   description: 'Testing',
-  title: 'Test 1'
+  title: 'Test 1',
 };
 
 export const editUserDto: EditUserDto = {
   firstName: 'Jane',
-  email: 'johndoe@gmail.com'
+  email: 'johndoe@gmail.com',
 };
 
 export const user = {
@@ -51,4 +51,8 @@ export const healthResponse = {
   info: {},
   error: {},
   details: {},
+};
+
+export const mailerMock = {
+  sendMail: jest.fn().mockResolvedValue({}),
 };
