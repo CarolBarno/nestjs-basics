@@ -5,6 +5,7 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from './configs/swagger.config';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import logger from './configs/logger.config';
 
 const configService = new ConfigService();
 const port =
@@ -27,7 +28,7 @@ async function bootstrap() {
   });
   const document = await swaggerConfig(app, port);
   SwaggerModule.setup('swagger-ui', app, document);
-  console.log(`Swagger UI is running on: http://localhost:${port}/swagger-ui`);
+  logger.log(`Swagger UI is running on: http://localhost:${port}/swagger-ui`);
   await app.listen(`${port}`);
 }
 bootstrap();
