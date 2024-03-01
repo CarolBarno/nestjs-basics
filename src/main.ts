@@ -26,7 +26,8 @@ async function bootstrap() {
     preflightContinue: true,
     optionsSuccessStatus: 204,
   });
-  const document = await swaggerConfig(app, port);
+  app.setGlobalPrefix('/api');
+  const document = await swaggerConfig(app);
   SwaggerModule.setup('swagger-ui', app, document);
   logger.log(`Swagger UI is running on: http://localhost:${port}/swagger-ui`);
   await app.listen(`${port}`);
