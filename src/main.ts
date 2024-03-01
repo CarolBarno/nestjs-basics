@@ -23,7 +23,7 @@ async function bootstrap() {
   app.enableCors({
     origin: '*',
     methods: 'GET,PUT,POST',
-    preflightContinue: false,
+    preflightContinue: true,
     optionsSuccessStatus: 204,
   });
   const document = await swaggerConfig(app, port);
